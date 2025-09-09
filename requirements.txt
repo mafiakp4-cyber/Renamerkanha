@@ -1,3 +1,4 @@
-pyrogram
-tgcrypto
-pillow
+pyrogram==2.2.23
+tgcrypto==1.2.4
+pillow==10.0.1
+flask==2.3.3
