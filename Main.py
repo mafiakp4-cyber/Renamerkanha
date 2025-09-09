@@ -3,9 +3,9 @@ from pyrogram import Client, filters
 from pyrogram.types import Message
 
 # Config
-API_ID = int(os.environ.get("API_ID", "123456"))   # my.telegram.org से
-API_HASH = os.environ.get("API_HASH", "your_api_hash")
-BOT_TOKEN = os.environ.get("BOT_TOKEN", "your_bot_token")
+API_ID = int(os.environ.get("API_ID", "21302239"))   # my.telegram.org से
+API_HASH = os.environ.get("API_HASH", "1560930c983fbca6a1fcc8eab760d40d")
+BOT_TOKEN = os.environ.get("BOT_TOKEN", "8476510332:AAFiPdMnGGHUVYDxsjD8UoN5_ycfF6BjPh0")
 
 app = Client(
     "RenamerBot",
