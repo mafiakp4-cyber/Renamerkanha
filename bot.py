@@ -90,6 +90,5 @@ def webhook():
 
 # ---------------- Main ----------------
 if __name__ == "__main__":
-    print("🚀 Renamer Bot Web Service Started...")
-    app.set_webhook(url=WEBHOOK_URL)
+    print("🚀 Renamer Bot Web Service Started...") 
     flask_app.run(host="0.0.0.0", port=PORT)
