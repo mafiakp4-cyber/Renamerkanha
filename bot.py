@@ -54,3 +54,23 @@ async def rename_file(client: Client, message: Message):
 
 print("🚀 Renamer Bot Started...")
 app.run()
+from flask import Flask
+import threading
+
+# Dummy Flask app for Render
+flask_app = Flask(__name__)
+
+@flask_app.route('/')
+def home():
+    return "✅ Renamer Bot is running on Render!"
+
+def run_flask():
+    port = int(os.environ.get("PORT", 5000))
+    flask_app.run(host="0.0.0.0", port=port)
+
+# Thread से दोनों चीजें parallel चलेंगी
+if __name__ == "__main__":
+    # Flask server background में
+    threading.Thread(target=run_flask).start()
+    # Pyrogram bot
+    app.run()
