@@ -7,7 +7,7 @@ import threading
 # Config
 API_ID = int(os.environ.get("API_ID", "21302239"))
 API_HASH = os.environ.get("API_HASH", "1560930c983fbca6a1fcc8eab760d40d")
-BOT_TOKEN = os.environ.get("BOT_TOKEN", "8476510332:AAFiPdMnGGHUVYDxsjD8UoN5_ycfF6BjPh0")
+BOT_TOKEN = os.environ.get("BOT_TOKEN", "7649467838:AAFe8VrdrSCeJeEBYhZCjRpNw36jLRISiEQ")
 
 app = Client(
     "RenamerBot",
