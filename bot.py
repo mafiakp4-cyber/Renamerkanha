@@ -14,6 +14,9 @@ app = Client(
     bot_token=BOT_TOKEN
 )
 
+# ✅ Temporary dictionary for user files
+user_files = {}
+
 # Step 1: जब user file भेजे
 @app.on_message(filters.document | filters.video | filters.audio)
 async def ask_new_name(client: Client, message: Message):
@@ -24,18 +27,17 @@ async def ask_new_name(client: Client, message: Message):
         f"📂 आपने भेजा है: `{file_name}`\n\n✏️ नया नाम भेजो (extension सही रखना, जैसे `.mp4`)"
     )
 
-    # save file_id for rename step
-    app.set_parse_mode("markdown")
-    app.storage[message.from_user.id] = file.file_id
+    # ✅ Save file_id for rename step
+    user_files[message.from_user.id] = file.file_id
 
 # Step 2: नया नाम लेने के बाद
 @app.on_message(filters.text & filters.private)
 async def rename_file(client: Client, message: Message):
     user_id = message.from_user.id
-    if user_id not in app.storage:
+    if user_id not in user_files:
         return
 
-    file_id = app.storage.pop(user_id)
+    file_id = user_files.pop(user_id)
     new_name = message.text.strip()
 
     try:
@@ -51,5 +53,4 @@ async def rename_file(client: Client, message: Message):
         await message.reply_text(f"❌ Error: {e}")
 
 print("🚀 Renamer Bot Started...")
-app.storage = {}  # for temporary user file store
 app.run()
