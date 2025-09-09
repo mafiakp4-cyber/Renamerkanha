@@ -1,4 +1,4 @@
-pyrogram==2.2.23
+pyrogram==2.0.106
 tgcrypto==1.2.4
 pillow==10.0.1
 flask==2.3.3
