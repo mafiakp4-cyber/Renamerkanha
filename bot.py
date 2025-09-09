@@ -1,6 +1,8 @@
 import os
 from pyrogram import Client, filters
 from pyrogram.types import Message
+from flask import Flask
+import threading
 
 # Config
 API_ID = int(os.environ.get("API_ID", "21302239"))   # my.telegram.org से
@@ -52,12 +54,7 @@ async def rename_file(client: Client, message: Message):
     except Exception as e:
         await message.reply_text(f"❌ Error: {e}")
 
-print("🚀 Renamer Bot Started...")
-app.run()
-from flask import Flask
-import threading
-
-# Dummy Flask app for Render
+# ---------- Flask Setup for Render ----------
 flask_app = Flask(__name__)
 
 @flask_app.route('/')
@@ -68,9 +65,8 @@ def run_flask():
     port = int(os.environ.get("PORT", 5000))
     flask_app.run(host="0.0.0.0", port=port)
 
-# Thread से दोनों चीजें parallel चलेंगी
+# ---------- Run both Flask + Pyrogram ----------
 if __name__ == "__main__":
-    # Flask server background में
+    print("🚀 Renamer Bot Started...")
     threading.Thread(target=run_flask).start()
-    # Pyrogram bot
     app.run()
