@@ -7,7 +7,7 @@ from pyrogram.types import Message
 
 API_ID = int(os.getenv("API_ID", "21302239"))
 API_HASH = os.getenv("API_HASH", "1560930c983fbca6a1fcc8eab760d40d")
-BOT_TOKEN = os.getenv("BOT_TOKEN")
+BOT_TOKEN = os.getenv("8020112693:AAGjbPsjdgLVUrasto0AeJ-Fht121MKOpwQ")
 
 bot = Client("thumb_renamer", api_id=API_ID, api_hash=API_HASH, bot_token=BOT_TOKEN)
 flask_app = Flask(__name__)
