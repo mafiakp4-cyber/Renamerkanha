@@ -1,115 +1,94 @@
-import logging
-import os
-import asyncio
-from pathlib import Path
-from io import BytesIO
-from PIL import Image
-import ffmpeg
+ import logging, os, asyncio, ffmpeg
 from aiogram import Bot, Dispatcher, types, F
-from aiogram.filters import Command, StateFilter
+from aiogram.filters import Command
 from aiogram.fsm.context import FSMContext
 from aiogram.fsm.state import State, StatesGroup
 from aiogram.types import FSInputFile, ReplyKeyboardMarkup, KeyboardButton, ReplyKeyboardRemove
-from aiogram.utils.markdown import hbold, hcode
+from pathlib import Path
+from PIL import Image
 
-# Configure logging
 logging.basicConfig(level=logging.INFO)
-logger = logging.getLogger(__name__)
+bot = Bot(token=os.getenv("8257399725:AAG278Z_ndrdWgxTQuu7DQugXaoCdf1xW0M"))
+dp = Dispatcher()
 
-# Bot token from environment
-BOT_TOKEN = os.getenv("8257399725:AAG278Z_ndrdWgxTQuu7DQugXaoCdf1xW0M")
 TEMP_DIR = Path("temp_files")
 TEMP_DIR.mkdir(exist_ok=True)
 
-# Initialize bot and dispatcher
-bot = Bot(token=BOT_TOKEN)
-dp = Dispatcher()
+class ThumbChanger(StatesGroup):
+    waiting_video = State()
+    waiting_thumb = State()
 
-# FSM States
-class VideoProcessing(StatesGroup):
-    waiting_for_video = State()
-    waiting_for_thumbnail = State()
-    choosing_thumbnail_source = State()
-    processing = State()
-
-# Helper functions
-def get_main_keyboard():
-    """Main menu keyboard"""
-    kb = ReplyKeyboardMarkup(
-        keyboard=[
-            [KeyboardButton(text="📹 Change Thumbnail")],
-            [KeyboardButton(text="ℹ️ Help"), KeyboardButton(text="⚙️ Settings")]
-        ],
+def main_keyboard():
+    return ReplyKeyboardMarkup(
+        keyboard=[[KeyboardButton(text="🎬 Change Thumbnail")]],
         resize_keyboard=True
     )
-    return kb
 
-def get_thumbnail_source_keyboard():
-    """Keyboard for thumbnail source selection"""
-    kb = ReplyKeyboardMarkup(
-        keyboard=[
-            [KeyboardButton(text="📸 Upload Image")],
-            [KeyboardButton(text="⏱️ Extract from Video"), KeyboardButton(text="🎬 Use Video Cover")]
-        ],
-        resize_keyboard=True
-    )
-    return kb
-
-async def extract_video_thumbnail(video_path: str, output_path: str, timestamp: float = 1.0) -> bool:
-    """Extract thumbnail from video at specific timestamp"""
-    try:
-        ffmpeg.input(video_path, ss=timestamp).output(output_path, vf="scale=1280:720", vframes=1).run(capture_stdout=True, capture_stderr=True, quiet=True)
-        return True
-    except Exception as e:
-        logger.error(f"Error extracting thumbnail: {e}")
-        return False
-
-async def set_video_thumbnail(video_path: str, thumbnail_path: str, output_path: str) -> bool:
-    """Set thumbnail for video using ffmpeg"""
-    try:
-        ffmpeg.input(video_path).output(
-            output_path,
-            vcodec='copy',
-            acodec='copy',
-            metadata=f'title="Video with Custom Thumbnail"'
-        ).run(capture_stdout=True, capture_stderr=True, quiet=True)
-        
-        # Add thumbnail metadata
-        ffmpeg.input(output_path).input(thumbnail_path).concat(n=1, v=1, a=0).output(
-            str(output_path).replace(".mp4", "_with_thumb.mp4"),
-            c='copy'
-        ).run(capture_stdout=True, capture_stderr=True, quiet=True)
-        
-        return True
-    except Exception as e:
-        logger.error(f"Error setting thumbnail: {e}")
-        return False
-
-async def resize_image(image_path: str, max_width: int = 1280, max_height: int = 720) -> str:
-    """Resize image to appropriate dimensions"""
-    try:
-        img = Image.open(image_path)
-        img.thumbnail((max_width, max_height), Image.Resampling.LANCZOS)
-        img.save(image_path, quality=95)
-        return image_path
-    except Exception as e:
-        logger.error(f"Error resizing image: {e}")
-        return None
-
-async def cleanup_temp_files(user_id: int):
-    """Clean up temporary files for user"""
-    user_temp_dir = TEMP_DIR / str(user_id)
-    if user_temp_dir.exists():
-        for file in user_temp_dir.iterdir():
-            try:
-                file.unlink()
-            except:
-                pass
-
-# Command handlers
 @dp.message(Command("start"))
-async def cmd_start(message: types.Message):
-    """Start command"""
+async def start_cmd(msg: types.Message):
+    await msg.answer("👋 Welcome! Send a video to change its thumbnail.", reply_markup=main_keyboard())
+
+@dp.message(F.text == "🎬 Change Thumbnail")
+async def ask_video(msg: types.Message, state: FSMContext):
+    await msg.answer("📹 Please send your video.", reply_markup=ReplyKeyboardRemove())
+    await state.set_state(ThumbChanger.waiting_video)
+
+@dp.message(ThumbChanger.waiting_video, F.video)
+async def receive_video(msg: types.Message, state: FSMContext):
+    user_id = msg.from_user.id
+    user_dir = TEMP_DIR / str(user_id)
+    user_dir.mkdir(exist_ok=True)
+
+    video_path = user_dir / "video.mp4"
+    await bot.download(msg.video.file_id, video_path)
+
+    await msg.answer("✅ Video received!\nNow send a thumbnail image (jpg/png).")
+    await state.update_data(video_path=str(video_path))
+    await state.set_state(ThumbChanger.waiting_thumb)
+
+@dp.message(ThumbChanger.waiting_thumb, F.photo)
+async def receive_thumb(msg: types.Message, state: FSMContext):
+    data = await state.get_data()
+    video_path = data.get("video_path")
+    user_id = msg.from_user.id
+    thumb_path = TEMP_DIR / str(user_id) / "thumb.jpg"
+    await bot.download(msg.photo[-1].file_id, thumb_path)
+
+    # Resize image
+    img = Image.open(thumb_path)
+    img.thumbnail((1280, 720))
+    img.save(thumb_path, quality=95)
+
+    output_path = TEMP_DIR / str(user_id) / "final.mp4"
+
+    # Fast thumbnail attach
+    cmd = (
+        ffmpeg
+        .input(video_path)
+        .output(output_path, **{
+            "map": "0",
+            "movflags": "+faststart",
+            "attach": thumb_path,
+            "metadata:s:t": "mimetype=image/jpeg"
+        })
+        .overwrite_output()
+    )
+
+    await msg.answer("⚙️ Processing...")
+    cmd.run(quiet=True)
+
+    await msg.answer_video(FSInputFile(output_path), caption="✅ Thumbnail updated successfully!")
+    await state.clear()
+
+@dp.message()
+async def fallback(msg: types.Message):
+    await msg.answer("❓ Use /start or press button to change video thumbnail.", reply_markup=main_keyboard())
+
+async def main():
+    await dp.start_polling(bot)
+
+if __name__ == "__main__":
+    asyncio.run(main())    """Start command"""
     await message.answer(
         f"👋 Welcome to Video Thumbnail Changer Bot!\n\n"
         f"I can help you change video thumbnails easily.\n\n"
